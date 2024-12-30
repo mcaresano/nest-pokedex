@@ -4,18 +4,25 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CreatePokemonDto } from './dto/create-pokemon.dto';
 import { UpdatePokemonDto } from './dto/update-pokemon.dto';
 import { isValidObjectId, Model } from 'mongoose';
 import { Pokemon } from './entities/pokemon.entity';
 import { InjectModel } from '@nestjs/mongoose';
+import { PaginationDto } from '../common/dto/pagination.dto';
 
 @Injectable()
 export class PokemonService {
+  private defaultLimit:number
   constructor(
     @InjectModel(Pokemon.name)
     private readonly pokemonModel: Model<Pokemon>,
-  ) {}
+    private readonly configService: ConfigService
+  ) {
+    this.defaultLimit = configService.get('defaultLimit')
+
+  }
 
   async create(createPokemonDto: CreatePokemonDto) {
     createPokemonDto.name = createPokemonDto.name.toLowerCase();
@@ -27,8 +34,16 @@ export class PokemonService {
     }
   }
 
-  findAll() {
-    return `This action returns all pokemon`;
+  findAll(paginationDto: PaginationDto) {
+    const { limit = this.defaultLimit, offset = 0 } = paginationDto;
+    return this.pokemonModel
+      .find()
+      .limit(limit)
+      .skip(offset) // para el paginado.
+      .sort({
+        nro: 1, // orden ascendente
+      })
+      .select('-__v'); // quitamos el id de mongodb
   }
 
   async findOne(term: string) {
@@ -70,10 +85,11 @@ export class PokemonService {
     // si enviamos esta sola y eleiminamos uno cualquiera. nos devuelve un 200 como si hubiera existido. hay que bsucarlo primero.
     // const result = await this.pokemonModel.findByIdAndDelete(id)
 
-    const result = await this.pokemonModel.deleteOne({_id:id})
-    const {deletedCount} = result // se puede desestructurar directamente
-    if(deletedCount === 0) throw new BadRequestException(`Pokemon with id "${id}" not found`)
-    return result
+    const result = await this.pokemonModel.deleteOne({ _id: id });
+    const { deletedCount } = result; // se puede desestructurar directamente
+    if (deletedCount === 0)
+      throw new BadRequestException(`Pokemon with id "${id}" not found`);
+    return result;
   }
 
   private handleExceptions(error: any) {
