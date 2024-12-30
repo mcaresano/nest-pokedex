@@ -24,4 +24,4 @@
 
 
 Conectar Nest con mongoBD
-> npm i @nestjs/mongoose mongoose
+> npm i @nestjs/mongoose mongoose# nest-pokedex
